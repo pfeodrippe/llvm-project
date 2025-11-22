@@ -3111,7 +3111,13 @@ static LValue EmitGlobalVarDeclLValue(CodeGenFunction &CGF,
       return CGF.MakeAddrLValue(Addr, T, AlignmentSource::Decl);
   }
 
-  llvm::Value *V = CGF.CGM.GetAddrOfGlobalVar(VD);
+  // For static data members with in-class initializers, ensure we emit a
+  // definition if one doesn't exist yet. This is necessary for interpreters
+  // where the member's address might be taken after the class definition,
+  // requiring the symbol to be materialized on demand.
+  const VarDecl *DefinitionVD = CGF.CGM.materializeStaticDataMember(VD);
+
+  llvm::Value *V = CGF.CGM.GetAddrOfGlobalVar(DefinitionVD);
 
   if (VD->getTLSKind() != VarDecl::TLS_None)
     V = CGF.Builder.CreateThreadLocalAddress(V);

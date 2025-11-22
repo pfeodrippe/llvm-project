@@ -1839,6 +1839,21 @@ public:
     return TrapReasonBuilder(&getDiags(), DiagID, TR);
   }
 
+  void EmitGlobalVarDefinition(const VarDecl *D, bool IsTentative = false);
+
+public:
+  /// Ensure a static data member with an in-class initializer is materialized.
+  ///
+  /// For static data members with in-class initializers, this ensures a
+  /// definition is emitted if one doesn't exist yet. This is necessary for
+  /// interpreters where the member's address might be taken after the class
+  /// definition, requiring the symbol to be materialized on demand.
+  ///
+  /// \param VD The variable declaration to materialize.
+  /// \returns The declaration that owns the emitted definition, or the
+  ///          original declaration if no materialization is needed.
+  const VarDecl *materializeStaticDataMember(const VarDecl *VD);
+
 private:
   bool shouldDropDLLAttribute(const Decl *D, const llvm::GlobalValue *GV) const;
 
@@ -1889,7 +1904,6 @@ private:
   void EmitGlobalFunctionDefinition(GlobalDecl GD, llvm::GlobalValue *GV);
   void EmitMultiVersionFunctionDefinition(GlobalDecl GD, llvm::GlobalValue *GV);
 
-  void EmitGlobalVarDefinition(const VarDecl *D, bool IsTentative = false);
   void EmitAliasDefinition(GlobalDecl GD);
   void emitIFuncDefinition(GlobalDecl GD);
   void emitCPUDispatchDefinition(GlobalDecl GD);
