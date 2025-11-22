@@ -443,4 +443,19 @@ TEST_F(InterpreterTest, TranslationUnit_CanonicalDecl) {
             sema.getASTContext().getTranslationUnitDecl()->getCanonicalDecl());
 }
 
+TEST_F(InterpreterTest, StaticConstMemberAddress) {
+  std::unique_ptr<Interpreter> Interp = createInterpreter();
+
+  // Test taking the address of a static const member with in-class initializer
+  llvm::cantFail(
+      Interp->ParseAndExecute("struct Foo { static int const bar { 5 }; };"));
+
+  Value V;
+  llvm::cantFail(
+      Interp->ParseAndExecute("int const * p = &Foo::bar; *p", &V));
+
+  // The value should be 5
+  EXPECT_EQ(V.getInt(), 5);
+}
+
 } // end anonymous namespace

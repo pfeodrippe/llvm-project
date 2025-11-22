@@ -6302,6 +6302,35 @@ CodeGenModule::getLLVMLinkageVarDefinition(const VarDecl *VD) {
   return getLLVMLinkageForDeclarator(VD, Linkage);
 }
 
+const VarDecl *CodeGenModule::materializeStaticDataMember(const VarDecl *VD) {
+  if (!VD->isStaticDataMember())
+    return VD;
+
+  const VarDecl *InitVD = nullptr;
+  if (!VD->getAnyInitializer(InitVD) || !InitVD)
+    return VD;
+
+  StringRef MangledName = getMangledName(InitVD);
+  auto needsEmission = [](llvm::GlobalValue *GV) {
+    if (!GV || GV->isDeclaration())
+      return true;
+    if (auto *GVVar = llvm::dyn_cast<llvm::GlobalVariable>(GV))
+      return GVVar->hasAvailableExternallyLinkage();
+    return false;
+  };
+
+  llvm::GlobalValue *GV = GetGlobalValue(MangledName);
+  if (needsEmission(GV)) {
+    EmitGlobalVarDefinition(InitVD, /*IsTentative=*/false);
+    GV = GetGlobalValue(MangledName);
+    if (auto *GVVar = llvm::dyn_cast_or_null<llvm::GlobalVariable>(GV))
+      if (GVVar->hasAvailableExternallyLinkage())
+        GVVar->setLinkage(llvm::GlobalValue::LinkOnceODRLinkage);
+  }
+
+  return InitVD;
+}
+
 /// Replace the uses of a function that was declared with a non-proto type.
 /// We want to silently drop extra arguments from call sites
 static void replaceUsesOfNonProtoConstant(llvm::Constant *old,

@@ -2243,6 +2243,7 @@ ConstantLValueEmitter::tryEmitBase(const APValue::LValueBase &base) {
     }
 
     if (const auto *VD = dyn_cast<VarDecl>(D)) {
+      VD = CGM.materializeStaticDataMember(VD);
       // We can never refer to a variable with local storage.
       if (!VD->hasLocalStorage()) {
         if (VD->isFileVarDecl() || VD->hasExternalStorage())
